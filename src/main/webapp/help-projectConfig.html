@@ -1,10 +1,16 @@
 <div>
   <p>
-    Enter environment variable key/value pairs in this textarea,
-    separated by newlines.
+    Enter environment variable key/command 
+    pairs in this textarea, separated each of them by newlines. 
   </p>
   <pre>
-     AAA=BBB
-     PRJHOME=${WORKSPACE}/project
+	AAA
+    :cmd /c "date /t"
+    PRJHOME=${WORKSPACE}/project
   </pre>
+  <p>
+    Important note: variable resolution is restricted to 
+    OS environment variables in commands currently, so there is no way to
+    pass WORKSPACE variable to the command to be executed.  
+  </p>
 </div>
