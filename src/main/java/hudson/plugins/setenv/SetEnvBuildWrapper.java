@@ -8,6 +8,9 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.io.ByteArrayInputStream;
 import java.io.StringReader;
+import java.io.*;
+import java.util.*;
+
 
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -62,18 +65,55 @@ public class SetEnvBuildWrapper extends BuildWrapper {
         return map;
     }
 
-    private Properties load(String properties) throws IOException {
+    public Properties load(String properties)
+        throws IOException
+    {
         Properties p = new Properties();
-        try {
-            p.load(new StringReader(properties));
-        } catch (NoSuchMethodError e) {
-            // load(Reader) method is only available on JDK6.
-            // this fall back version doesn't work correctly with non-ASCII characters,
-            // but there's no other easy ways out it seems.
+        try
+        {
+            BufferedReader br = new BufferedReader(new StringReader(properties));
+            for(String line = br.readLine(); line != null; line = br.readLine())
+                if(line.length() > 0)
+                {
+                    int pos = line.indexOf("=");
+                    if(pos < 0)
+                    {
+                        String nline = br.readLine();
+                        if(nline.startsWith(":"))
+                        {
+                            String command = nline.substring(1);
+                            Process process = Runtime.getRuntime().exec(command);
+                            StreamReader reader = new StreamReader(process.getInputStream());
+                            reader.start();
+                            process.waitFor();
+                            reader.join();
+                            String key = line;
+                            String value = reader.getResult();
+                            p.put(key, value);
+                        } else
+                        {
+                            line = nline;
+                        }
+                    } else
+                    {
+                        String key = line.substring(0, pos);
+                        String value = line.substring(pos + 1);
+                        p.put(key, value);
+                    }
+                }
+
+        }
+        catch(Exception e1)
+        {
+            e1.printStackTrace();
+        }
+        catch(NoSuchMethodError e)
+        {
             p.load(new ByteArrayInputStream(properties.getBytes()));
         }
         return p;
     }
+
 
     /*    public class EnvironmentImpl extends BuildWrapper.Environment{
         public void buildEnvVars(Map<String, String> env) {
@@ -117,5 +157,34 @@ public class SetEnvBuildWrapper extends BuildWrapper {
         }
 
     }
+    private static class StreamReader extends Thread
+    {
+
+        public void run()
+        {
+            int c;
+            try
+            {
+                while((c = is.read()) != -1) 
+                    sw.write(c);
+            }
+            catch(IOException e) { }
+        }
+
+        String getResult()
+        {
+            return sw.toString();
+        }
+
+        private InputStream is;
+        private StringWriter sw;
+
+        StreamReader(InputStream is)
+        {
+            this.is = is;
+            sw = new StringWriter();
+        }
+    }
+
 
 }
